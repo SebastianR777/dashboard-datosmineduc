@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard MINEDUC — Calificación de Establecimientos</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f4f4f2;
+      --surface: #ffffff;
+      --surface-alt: #f8f8f6;
+      --border: rgba(11,11,11,0.10);
+      --border-strong: rgba(11,11,11,0.18);
+      --text-primary: #0b0b0b;
+      --text-secondary: #52514e;
+      --text-muted: #898781;
+      --radius: 8px;
+      --blue: #2a78d6;
+      --green: #1baf7a;
+      --amber: #eda100;
+      --violet: #4a3aa7;
+      --red: #e34948;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+
+    /* ── SIDEBAR ── */
+    .layout { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: 220px;
+      min-height: 100vh;
+      background: #0f1117;
+      color: #c3c2b7;
+      display: flex;
+      flex-direction: column;
+      padding: 1.5rem 0;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 100;
+    }
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 10px;
+      padding: 0 1.25rem 1.5rem;
+      border-bottom: 0.5px solid rgba(255,255,255,0.08);
+      margin-bottom: 1rem;
+    }
+    .sidebar-logo .logo-icon {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--blue); display: flex; align-items: center;
+      justify-content: center; color: #fff; font-size: 16px;
+    }
+    .sidebar-logo span { font-size: 14px; font-weight: 600; color: #fff; }
+    .sidebar-logo small { font-size: 10px; color: #898781; display: block; margin-top: 1px; }
+
+    .sidebar-section { padding: 0 .75rem; margin-bottom: .25rem; }
+    .sidebar-section-label {
+      font-size: 9px; text-transform: uppercase; letter-spacing: 0.07em;
+      color: #52514e; padding: 0 .5rem; margin-bottom: 4px;
+    }
+    .sidebar-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 10px; border-radius: 6px;
+      font-size: 13px; color: #c3c2b7;
+      cursor: pointer; transition: background .15s, color .15s;
+      text-decoration: none;
+    }
+    .sidebar-item i { font-size: 15px; width: 18px; text-align: center; }
+    .sidebar-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
+    .sidebar-item.active { background: var(--blue); color: #fff; }
+
+    .sidebar-footer {
+      margin-top: auto; padding: 1rem 1.25rem 0;
+      border-top: 0.5px solid rgba(255,255,255,0.08);
+      font-size: 11px; color: #52514e;
+    }
+
+    /* ── MAIN ── */
+    .main { margin-left: 220px; flex: 1; padding: 2rem; }
+
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+    .topbar-title h1 { font-size: 20px; font-weight: 600; }
+    .topbar-title p { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+
+    .anio-badge {
+      background: var(--surface); border: 0.5px solid var(--border-strong);
+      border-radius: 6px; padding: 6px 14px; font-size: 13px; font-weight: 500;
+      color: var(--text-primary); cursor: pointer;
+    }
+
+    /* ── FILTERS ── */
+    .filters-card {
+      background: var(--surface); border: 0.5px solid var(--border);
+      border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1.25rem;
+    }
+    .filters-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 10px; align-items: end;
+    }
+    .fg label {
+      display: block; font-size: 10px; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 4px;
+    }
+    .fg select, .fg input {
+      width: 100%; height: 34px; font-size: 13px;
+      padding: 0 8px; border-radius: var(--radius);
+      border: 0.5px solid var(--border-strong);
+      background: var(--surface-alt); color: var(--text-primary);
+      appearance: none;
+    }
+    .fg select:focus, .fg input:focus { outline: none; border-color: var(--blue); }
+    .fg-btns { display: flex; gap: 6px; align-items: flex-end; }
+    .btn-primary {
+      height: 34px; padding: 0 18px; border-radius: var(--radius);
+      border: none; background: var(--blue); color: #fff;
+      font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .btn-primary:hover { background: #1a5fb4; }
+    .btn-ghost {
+      height: 34px; padding: 0 14px; border-radius: var(--radius);
+      border: 0.5px solid var(--border-strong); background: transparent;
+      color: var(--text-secondary); font-size: 13px; cursor: pointer;
+    }
+    .btn-ghost:hover { background: var(--surface-alt); }
+
+    /* ── KPI ── */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px; margin-bottom: 1.25rem;
+    }
+    .kpi {
+      background: var(--surface); border-radius: var(--radius);
+      padding: .9rem 1rem; border-left: 3px solid transparent;
+      border-right: 0.5px solid var(--border);
+      border-top: 0.5px solid var(--border);
+      border-bottom: 0.5px solid var(--border);
+    }
+    .kpi-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 4px; }
+    .kpi-value { font-size: 24px; font-weight: 600; color: var(--text-primary); line-height: 1.1; }
+    .kpi-sub { font-size: 11px; color: var(--text-secondary); margin-top: 3px; }
+
+    /* ── CHARTS ── */
+    .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    .chart-card {
+      background: var(--surface); border: 0.5px solid var(--border);
+      border-radius: 12px; padding: 1.1rem 1.25rem;
+    }
+    .chart-card.full { grid-column: 1 / -1; }
+    .chart-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+    .chart-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; margin-bottom: .75rem; }
+    .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; font-size: 11px; color: var(--text-secondary); }
+    .leg-dot { width: 9px; height: 9px; border-radius: 2px; display: inline-block; margin-right: 3px; vertical-align: middle; }
+
+    /* ── TABLE ── */
+    .table-wrap { overflow-x: auto; margin-top: .5rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th {
+      background: var(--surface-alt); color: var(--text-muted);
+      font-weight: 600; text-transform: uppercase; font-size: 10px;
+      letter-spacing: 0.05em; padding: 7px 10px; text-align: left;
+      border-bottom: 0.5px solid var(--border-strong);
+    }
+    td { padding: 7px 10px; border-bottom: 0.5px solid var(--border); color: var(--text-primary); }
+    tbody tr:hover td { background: var(--surface-alt); }
+    tbody tr:last-child td { border-bottom: none; }
+
+    .badge {
+      display: inline-block; padding: 2px 8px;
+      border-radius: 4px; font-size: 10px; font-weight: 600;
+    }
+    .b-high { background: #EAF3DE; color: #3B6D11; }
+    .b-mid  { background: #FAEEDA; color: #854F0B; }
+    .b-low  { background: #FCEBEB; color: #A32D2D; }
+    .b-na   { background: #f1efe8; color: #888780; }
+
+    .loading-msg { text-align: center; padding: 2rem; color: var(--text-muted); font-size: 13px; }
+    .error-msg { text-align: center; padding: 1rem; color: #A32D2D; font-size: 12px; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; padding: 1rem; }
+      .charts-grid { grid-template-columns: 1fr; }
+      .chart-card.full { grid-column: 1; }
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon"><i class="fas fa-school"></i></div>
+      <div>
+        <span>MINEDUC</span>
+        <small>Data Warehouse</small>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Módulos</div>
+      <a class="sidebar-item active" href="#">
+        <i class="fas fa-chart-bar"></i> Dashboard
+      </a>
+      <a class="sidebar-item" href="#" onclick="sendToChat('Muéstrame el ranking completo de establecimientos')">
+        <i class="fas fa-trophy"></i> Ranking
+      </a>
+      <a class="sidebar-item" href="#" onclick="sendToChat('Análisis por región')">
+        <i class="fas fa-map-marked-alt"></i> Por región
+      </a>
+      <a class="sidebar-item" href="#" onclick="sendToChat('Evolución histórica 2020-2025')">
+        <i class="fas fa-chart-line"></i> Histórico
+      </a>
+    </div>
+
+    <div class="sidebar-section" style="margin-top:.75rem">
+      <div class="sidebar-section-label">Filtros rápidos</div>
+      <a class="sidebar-item" href="#" onclick="quickFilter('dependencia_cod','3')">
+        <i class="fas fa-star"></i> Part. Pagados
+      </a>
+      <a class="sidebar-item" href="#" onclick="quickFilter('dependencia_cod','1')">
+        <i class="fas fa-building"></i> Municipales
+      </a>
+      <a class="sidebar-item" href="#" onclick="quickFilter('rural','1')">
+        <i class="fas fa-tree"></i> Rurales
+      </a>
+    </div>
+
+    <div class="sidebar-footer">
+      <div>Datos MINEDUC · 2020–2025</div>
+      <div style="margin-top:4px">Fuente: Rendimiento por Estudiante</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-title">
+        <h1>Calificación de Establecimientos Educacionales</h1>
+        <p>Chile · Educación regular, niños y jóvenes · Rating escala 1–7</p>
+      </div>
+      <div id="anio-display" class="anio-badge">Año 2025</div>
+    </div>
+
+    <!-- FILTROS -->
+    <div class="filters-card">
+      <div class="filters-row">
+        <div class="fg">
+          <label>Año académico</label>
+          <select id="f-anio">
+            <option value="2025">2025</option>
+            <option value="2024">2024</option>
+            <option value="2023">2023</option>
+            <option value="2022">2022</option>
+            <option value="2021">2021</option>
+            <option value="2020">2020</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Región</label>
+          <select id="f-region">
+            <option value="">Todas las regiones</option>
+            <option value="1">Tarapacá</option>
+            <option value="2">Antofagasta</option>
+            <option value="3">Atacama</option>
+            <option value="4">Coquimbo</option>
+            <option value="5">Valparaíso</option>
+            <option value="6">O'Higgins</option>
+            <option value="7">Maule</option>
+            <option value="8">Biobío</option>
+            <option value="9">Araucanía</option>
+            <option value="10">Los Lagos</option>
+            <option value="11">Aysén</option>
+            <option value="12">Magallanes</option>
+            <option value="13">Metropolitana</option>
+            <option value="14">Los Ríos</option>
+            <option value="15">Arica y Parinacota</option>
+            <option value="16">Ñuble</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Dependencia</label>
+          <select id="f-dep">
+            <option value="">Todas</option>
+            <option value="1">Municipal</option>
+            <option value="2">Part. Subvencionado</option>
+            <option value="3">Part. Pagado</option>
+            <option value="4">Corp. Adm. Delegada</option>
+            <option value="5">SLEP</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Zona</label>
+          <select id="f-rural">
+            <option value="">Urbano y Rural</option>
+            <option value="0">Urbano</option>
+            <option value="1">Rural</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Buscar establecimiento</label>
+          <input id="f-search" type="text" placeholder="Nombre..." />
+        </div>
+        <div class="fg fg-btns">
+          <button class="btn-primary" onclick="loadData()">
+            <i class="fas fa-filter"></i> Aplicar
+          </button>
+          <button class="btn-ghost" onclick="resetFiltros()">Limpiar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-row">
+      <div class="kpi" style="border-left-color:var(--blue)">
+        <div class="kpi-label">Establecimientos</div>
+        <div class="kpi-value" id="kpi-total">—</div>
+        <div class="kpi-sub">con rating calculado</div>
+      </div>
+      <div class="kpi" style="border-left-color:var(--amber)">
+        <div class="kpi-label">Rating promedio</div>
+        <div class="kpi-value" id="kpi-rating">—</div>
+        <div class="kpi-sub">escala 1.0 – 7.0</div>
+      </div>
+      <div class="kpi" style="border-left-color:var(--green)">
+        <div class="kpi-label">Asistencia promedio</div>
+        <div class="kpi-value" id="kpi-asist">—</div>
+        <div class="kpi-sub">% sobre el año</div>
+      </div>
+      <div class="kpi" style="border-left-color:var(--violet)">
+        <div class="kpi-label">Tasa de aprobación</div>
+        <div class="kpi-value" id="kpi-aprob">—</div>
+        <div class="kpi-sub">% sobre estudiantes</div>
+      </div>
+      <div class="kpi" style="border-left-color:var(--red)">
+        <div class="kpi-label">Matrícula total</div>
+        <div class="kpi-value" id="kpi-mat">—</div>
+        <div class="kpi-sub">estudiantes</div>
+      </div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="charts-grid">
+
+      <div class="chart-card">
+        <div class="chart-title">Distribución de rating</div>
+        <div class="chart-sub">N° de establecimientos por nota (1–7)</div>
+        <div style="position:relative;height:210px">
+          <canvas id="chartDist" role="img" aria-label="Histograma de distribución de rating 1 a 7"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-title">Rating por dependencia</div>
+        <div class="chart-sub">Promedio por tipo de administración</div>
+        <div class="legend" id="legDep"></div>
+        <div style="position:relative;height:175px">
+          <canvas id="chartDep" role="img" aria-label="Rating promedio por dependencia administrativa"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-title">Evolución anual — indicadores nacionales</div>
+        <div class="chart-sub">Asistencia y aprobación 2020–2025</div>
+        <div class="legend" id="legEvol"></div>
+        <div style="position:relative;height:175px">
+          <canvas id="chartEvol" role="img" aria-label="Evolución anual de indicadores 2020 a 2025"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-title">Ranking de regiones</div>
+        <div class="chart-sub">Rating promedio por región (mayor a menor)</div>
+        <div style="position:relative;height:420px">
+          <canvas id="chartReg" role="img" aria-label="Ranking de regiones por rating promedio"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card full">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div class="chart-title">Establecimientos con mayor rating</div>
+            <div class="chart-sub" id="tbl-sub">Top 20 según filtros aplicados</div>
+          </div>
+          <div id="tbl-count" style="font-size:12px;color:var(--text-muted)"></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Establecimiento</th>
+                <th>Región</th>
+                <th>Dependencia</th>
+                <th style="text-align:right">Rating</th>
+                <th style="text-align:right">Asistencia</th>
+                <th style="text-align:right">Aprobación</th>
+                <th style="text-align:right">Matrícula</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-body">
+              <tr><td colspan="8" class="loading-msg">Cargando datos…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+// ── CONFIGURA AQUÍ LA URL DE TU BACKEND ──────────────────────────────────────
+const BASE = 'http://localhost:8000';
+// ─────────────────────────────────────────────────────────────────────────────
+
+let chartDist = null, chartDep = null, chartEvol = null, chartReg = null;
+
+// Datos de respaldo (de la DB real) para cuando la API no responde
+const FALLBACK_DIST = {1:223,2:1115,3:1460,4:1554,5:1557,6:1257,7:102};
+const FALLBACK_REG = [
+  {nombre:'Ñuble',rating:4.55},{nombre:'Los Ríos',rating:4.48},
+  {nombre:'Araucanía',rating:4.40},{nombre:'Arica y Parinacota',rating:4.30},
+  {nombre:'Maule',rating:4.27},{nombre:'Los Lagos',rating:4.22},
+  {nombre:'Coquimbo',rating:4.18},{nombre:'Magallanes',rating:4.16},
+  {nombre:'Biobío',rating:4.15},{nombre:"O'Higgins",rating:4.08},
+  {nombre:'Valparaíso',rating:3.99},{nombre:'Atacama',rating:3.85},
+  {nombre:'Antofagasta',rating:3.75},{nombre:'Tarapacá',rating:3.73},
+  {nombre:'Aysén',rating:3.59},{nombre:'R.M. Santiago',rating:3.51}
+];
+const EVOL = {
+  anios:[2020,2021,2022,2023,2024,2025],
+  asistencia:[93.76,90.31,89.41,90.34,90.94,91.08],
+  aprobacion:[98.6,97.8,98.2,98.3,98.4,98.4]
+};
+const DEP = {
+  labels:['Part. Pagado','Municipal','Part. Subv.','SLEP','Corp. Deleg.'],
+  valores:[5.47,4.12,3.85,3.67,1.71]
+};
+
+function ratingBadge(r) {
+  if (!r && r !== 0) return '<span class="badge b-na">S/D</span>';
+  const n = parseFloat(r);
+  if (n >= 5.5) return `<span class="badge b-high">${n.toFixed(1)}</span>`;
+  if (n >= 3.5) return `<span class="badge b-mid">${n.toFixed(1)}</span>`;
+  return `<span class="badge b-low">${n.toFixed(1)}</span>`;
+}
+
+function shortDep(d) {
+  if (!d) return '—';
+  return d
+    .replace('Corporacion de Administracion Delegada','Corp. Deleg.')
+    .replace('Particular Subvencionado','Part. Subv.')
+    .replace('Servicio Local de Educacion (SLEP)','SLEP')
+    .replace('Particular Pagado','Part. Pagado');
+}
+
+function shortReg(r) {
+  if (!r) return '—';
+  return r
+    .replace('Metropolitana de Santiago','R.M. Santiago')
+    .replace("Libertador General Bernardo O'Higgins","O'Higgins")
+    .replace('Magallanes y de la Antartica Chilena','Magallanes')
+    .replace('Arica y Parinacota','Arica/Parin.');
+}
+
+function buildLegend(id, items) {
+  document.getElementById(id).innerHTML = items
+    .map(i => `<span style="display:flex;align-items:center;gap:4px">
+      <span class="leg-dot" style="background:${i.color}"></span>${i.label}</span>`).join('');
+}
+
+function initChartDist(data) {
+  if (chartDist) chartDist.destroy();
+  const labels = ['1','2','3','4','5','6','7'];
+  const vals = labels.map(l => data[parseInt(l)] || 0);
+  chartDist = new Chart(document.getElementById('chartDist'), {
+    type: 'bar',
+    data: { labels, datasets: [{
+      label: 'Establecimientos', data: vals,
+      backgroundColor: '#2a78d6',
+      borderRadius: { topLeft: 4, topRight: 4 },
+      borderSkipped: false
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: c => `${c.raw.toLocaleString('es-CL')} establecimientos` }}},
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#898781', font: { size: 12 }}},
+        y: { grid: { color: '#e1e0d9' }, ticks: { color: '#898781', font: { size: 11 }},
+          border: { dash: [3,3] }}
+      }
+    }
+  });
+}
+
+function initChartDep() {
+  if (chartDep) chartDep.destroy();
+  const colors = ['#2a78d6','#1baf7a','#eda100','#4a3aa7','#e34948'];
+  buildLegend('legDep', DEP.labels.map((l,i) => ({ label: l, color: colors[i] })));
+  chartDep = new Chart(document.getElementById('chartDep'), {
+    type: 'bar',
+    data: { labels: DEP.labels, datasets: [{
+      label: 'Rating promedio', data: DEP.valores,
+      backgroundColor: colors,
+      borderRadius: { topLeft: 4, topRight: 4 },
+      borderSkipped: false
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: c => `Rating: ${c.raw.toFixed(2)}` }}},
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#898781', font: { size: 10 }, maxRotation: 30 }},
+        y: { min: 0, max: 7, grid: { color: '#e1e0d9' },
+          ticks: { color: '#898781', font: { size: 11 }},
+          border: { dash: [3,3] }}
+      }
+    }
+  });
+}
+
+function initChartEvol() {
+  if (chartEvol) chartEvol.destroy();
+  buildLegend('legEvol', [
+    { label: 'Asistencia %', color: '#2a78d6' },
+    { label: 'Aprobación %', color: '#1baf7a' }
+  ]);
+  chartEvol = new Chart(document.getElementById('chartEvol'), {
+    type: 'line',
+    data: { labels: EVOL.anios, datasets: [
+      { label: 'Asistencia %', data: EVOL.asistencia,
+        borderColor: '#2a78d6', backgroundColor: 'rgba(42,120,214,0.08)',
+        tension: 0.3, pointRadius: 4, pointBackgroundColor: '#2a78d6',
+        pointBorderColor: '#fff', pointBorderWidth: 2, borderWidth: 2, fill: true },
+      { label: 'Aprobación %', data: EVOL.aprobacion,
+        borderColor: '#1baf7a', backgroundColor: 'transparent',
+        tension: 0.3, pointRadius: 4, pointBackgroundColor: '#1baf7a',
+        pointBorderColor: '#fff', pointBorderWidth: 2, borderWidth: 2,
+        borderDash: [5,3] }
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false }},
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#898781', font: { size: 11 }}},
+        y: { min: 85, max: 102, grid: { color: '#e1e0d9' },
+          ticks: { color: '#898781', font: { size: 11 }, callback: v => v + '%' },
+          border: { dash: [3,3] }}
+      }
+    }
+  });
+}
+
+function initChartReg(regionData) {
+  if (chartReg) chartReg.destroy();
+  const sorted = [...regionData].sort((a,b) => b.rating - a.rating);
+  const labels = sorted.map(r => shortReg(r.nombre));
+  const vals = sorted.map(r => r.rating);
+  const colors = vals.map(v => v >= 5 ? '#1baf7a' : v >= 4 ? '#2a78d6' : v >= 3 ? '#eda100' : '#e34948');
+  chartReg = new Chart(document.getElementById('chartReg'), {
+    type: 'bar',
+    data: { labels, datasets: [{
+      label: 'Rating promedio', data: vals,
+      backgroundColor: colors,
+      borderRadius: { topLeft: 4, topRight: 4 },
+      borderSkipped: false, barThickness: 22
+    }]},
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: c => `Rating: ${c.raw.toFixed(2)}` }}},
+      scales: {
+        x: { min: 0, max: 7, grid: { color: '#e1e0d9' },
+          ticks: { color: '#898781', font: { size: 11 }},
+          border: { dash: [3,3] }},
+        y: { grid: { display: false }, ticks: { color: '#898781', font: { size: 11 }}}
+      }
+    }
+  });
+}
+
+async function loadData() {
+  const anio   = document.getElementById('f-anio').value;
+  const region = document.getElementById('f-region').value;
+  const dep    = document.getElementById('f-dep').value;
+  const rural  = document.getElementById('f-rural').value;
+  const search = document.getElementById('f-search').value.trim();
+
+  document.getElementById('anio-display').textContent = `Año ${anio}`;
+
+  let params = `anio=${anio}&page_size=20&sort=rating_desc`;
+  if (region) params += `&region_cod=${region}`;
+  if (dep)    params += `&dependencia_cod=${dep}`;
+  if (rural !== '') params += `&rural=${rural}`;
+  if (search) params += `&search=${encodeURIComponent(search)}`;
+
+  ['kpi-total','kpi-rating','kpi-asist','kpi-aprob','kpi-mat'].forEach(id => {
+    document.getElementById(id).textContent = '…';
+  });
+  document.getElementById('tbl-body').innerHTML =
+    '<tr><td colspan="8" class="loading-msg">Cargando datos…</td></tr>';
+
+  try {
+    const [statsRes, listRes, rankRes] = await Promise.all([
+      fetch(`${BASE}/api/stats/resumen?anio=${anio}`),
+      fetch(`${BASE}/api/establecimientos?${params}`),
+      fetch(`${BASE}/api/ranking/regiones?anio=${anio}`)
+    ]);
+    if (!statsRes.ok || !listRes.ok || !rankRes.ok) throw new Error('API error');
+
+    const stats = await statsRes.json();
+    const list  = await listRes.json();
+    const rank  = await rankRes.json();
+
+    document.getElementById('kpi-total').textContent  = (stats.total_establecimientos || 0).toLocaleString('es-CL');
+    document.getElementById('kpi-rating').textContent = stats.rating_promedio            ? stats.rating_promedio.toFixed(1)                  : '—';
+    document.getElementById('kpi-asist').textContent  = stats.asistencia_promedio        ? stats.asistencia_promedio.toFixed(1) + '%'        : '—';
+    document.getElementById('kpi-aprob').textContent  = stats.tasa_aprobacion_promedio   ? (stats.tasa_aprobacion_promedio * 100).toFixed(1) + '%' : '—';
+    document.getElementById('kpi-mat').textContent    = stats.matricula_total            ? stats.matricula_total.toLocaleString('es-CL')     : '—';
+
+    // Distribución de rating desde la lista
+    const distMap = {1:0,2:0,3:0,4:0,5:0,6:0,7:0};
+    list.resultados.forEach(e => { if (e.rating) distMap[Math.round(e.rating)] = (distMap[Math.round(e.rating)]||0)+1; });
+    initChartDist(distMap);
+
+    initChartReg(rank.map(r => ({ nombre: r.region_nombre, rating: r.rating_promedio })));
+
+    document.getElementById('tbl-sub').textContent = `Top 20 según filtros · ${list.total.toLocaleString('es-CL')} resultados totales`;
+
+    const tbody = document.getElementById('tbl-body');
+    if (list.resultados.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" class="loading-msg">Sin resultados para los filtros seleccionados.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.resultados.map((e, i) => `
+      <tr>
+        <td style="color:var(--text-muted);font-size:11px">${i + 1}</td>
+        <td style="font-weight:600;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${e.nombre}">${e.nombre}</td>
+        <td style="color:var(--text-secondary)">${shortReg(e.region_nombre)}</td>
+        <td style="color:var(--text-secondary)">${shortDep(e.dependencia_nombre)}</td>
+        <td style="text-align:right">${ratingBadge(e.rating)}</td>
+        <td style="text-align:right;color:var(--text-secondary)">${e.asistencia_promedio ? e.asistencia_promedio.toFixed(1) + '%' : '—'}</td>
+        <td style="text-align:right;color:var(--text-secondary)">${e.tasa_aprobacion ? (e.tasa_aprobacion * 100).toFixed(1) + '%' : '—'}</td>
+        <td style="text-align:right;color:var(--text-secondary)">${e.matricula_total ? e.matricula_total.toLocaleString('es-CL') : '—'}</td>
+      </tr>`).join('');
+
+  } catch (err) {
+    console.warn('API no disponible, cargando datos de respaldo:', err);
+    loadFallback();
+  }
+}
+
+function loadFallback() {
+  document.getElementById('kpi-total').textContent  = '15.366';
+  document.getElementById('kpi-rating').textContent = '4.0';
+  document.getElementById('kpi-asist').textContent  = '91.1%';
+  document.getElementById('kpi-aprob').textContent  = '98.4%';
+  document.getElementById('kpi-mat').textContent    = '3.444.164';
+  document.getElementById('tbl-sub').textContent    = 'Datos de respaldo — conecta el backend para resultados en tiempo real';
+  initChartDist(FALLBACK_DIST);
+  initChartReg(FALLBACK_REG);
+  document.getElementById('tbl-body').innerHTML =
+    `<tr><td colspan="8" class="loading-msg" style="color:#854F0B">
+      Backend no disponible. Los gráficos muestran datos reales extraídos de la base de datos.<br>
+      Configura <code>BASE</code> en el script con la URL de tu FastAPI para ver la tabla.
+    </td></tr>`;
+}
+
+function resetFiltros() {
+  document.getElementById('f-anio').value   = '2025';
+  document.getElementById('f-region').value = '';
+  document.getElementById('f-dep').value    = '';
+  document.getElementById('f-rural').value  = '';
+  document.getElementById('f-search').value = '';
+  loadData();
+}
+
+function quickFilter(field, value) {
+  if (field === 'dependencia_cod') document.getElementById('f-dep').value = value;
+  if (field === 'rural') document.getElementById('f-rural').value = value;
+  loadData();
+}
+
+// Inicializar gráficos estáticos y cargar datos
+initChartDep();
+initChartEvol();
+loadData();
+</script>
+</body>
+</html>
